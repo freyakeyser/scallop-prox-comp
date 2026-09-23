@@ -1821,7 +1821,7 @@ mineral[!mineral$sample %in% c("QA/QC SY-4","QA/QC Till-2","QA/QC CCU-1d","QA/QC
 
 mineral[mineral$name=="Se",]
 
-# new_hyd from chapter 1.rmd
+#join with full sample
 ash <- new_hyd[, c("ID", "Date.fished", "perc.ash", "ash.wet", "ww_meat")]
 ash$sample <- as.character(ash$ID)
 mineral <- left_join(mineral, ash)
@@ -1968,7 +1968,35 @@ dev.off()
 
 #################### FAME #########################
 gc <- read.csv("gc.csv")
+
+names(gc) <- gsub(x = names(gc), pattern = "n.", replacement="n-", fixed=T)
+names(gc) <- gsub(x = names(gc), pattern = "a.", replacement="a", fixed=T)
+names(gc) <- gsub(x = names(gc), pattern = "y.", replacement="y", fixed=T)
 names(gc) <- gsub(x = names(gc), pattern = ".", replacement=":", fixed=T)
+
+fa_order <- names(gc)
+fa_order <- fa_order[grep(x=fa_order, pattern="Quantity")]
+fa_order <- gsub(x=fa_order, pattern="Quantity", replacement="")
+fa_order <- factor(fa_order, levels=unique(fa_order))
+
+redo <- gc %>% dplyr::select(sample, file) %>%
+  distinct() %>%
+  group_by(sample) %>%
+  summarize(n=n()) %>%
+  filter(n>1)
+redo <- gc[gc$sample %in% redo$sample,]  
+remove <- as.data.frame(redo[!grepl(x=redo$file, pattern="2025-11-23", fixed=T),])
+remove <- unique(remove[,c("sample", "file")])
+
+gc <- gc[!(gc$sample %in% remove$sample & gc$file %in% remove$file),]
+
+gc %>% dplyr::select(sample, file) %>%
+  distinct() %>%
+  group_by(sample) %>%
+  summarize(n=n()) %>%
+  filter(n>1)
+
+gc <- gc[-grep(x=gc$sample, pattern="\\T", fixed=T),]
 quantity <- dplyr::select(gc, sample, starts_with("Quantity"))
 area <- dplyr::select(gc, sample, contains("Area."), contains("Total"))
 
@@ -2260,3 +2288,4 @@ ggplot() +
   theme_bw() +
   theme(panel.grid=element_blank())
 dev.off()
+
